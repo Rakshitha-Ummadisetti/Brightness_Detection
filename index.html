@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brightness Detection</title>
+</head>
+<body>
+    <video id="video" autoplay></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+    <div id="alert"></div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const alertDiv = document.getElementById('alert');
+
+        // Access the user's webcam
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(error => {
+                console.error("Error accessing webcam: ", error);
+            });
+
+        // Function to send frame to server
+        function sendFrameToServer(imageData) {
+            fetch('http://localhost:3000/process-frame', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ image: imageData }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                alertDiv.textContent = `Brightness: ${data.brightness}`;
+                if (data.brightness === 'Low' || data.brightness === 'High') {
+                    alertDiv.style.color = 'red';
+                } else {
+                    alertDiv.style.color = 'green';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        // Capture and process the video frame every second
+        setInterval(() => {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const imageData = canvas.toDataURL('image/jpeg');
+            sendFrameToServer(imageData);
+        }, 1000); // Adjust the interval as needed
+
+    </script>
+</body>
+</html>
